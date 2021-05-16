@@ -1,4 +1,7 @@
 import ezdxf
-import sqlalchemy
+from db import con
+
+res = con.execute('select 1')
+print(res.fetchall())
 
 
