@@ -5,6 +5,6 @@ res = con.execute('''select jsonb_agg(st_asgeojson(st_transform(geometry, 5186))
 data = res.fetchall()
 print(type(data))
 print(type(data[0]))
-print(type(data[0]['jsonb_agg'][0]))
+print(type(data[0]['jsonb_agg']))
 
 
