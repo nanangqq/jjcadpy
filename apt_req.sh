@@ -1,3 +1,3 @@
 apt update
-apt install libpq-dev
+apt install libpq-dev pipenv
 
