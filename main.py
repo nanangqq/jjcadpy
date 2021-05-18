@@ -2,16 +2,24 @@ from sys import argv
 import json
 import os
 import ezdxf
-from db import con
 import hashlib
 import time
+import numpy as np
+
+from db import con
 
 def getHashStr(string):
     return hashlib.sha256(string.encode()).hexdigest()
 
-params = json.loads(argv[1])
-# print(params['body'][0])
-pnus = params['body']
+if len(argv)>1:
+    params = json.loads(argv[1])
+    # print(params['body'][0])
+    pnus = params['body']
+    out_dir = '../out'
+else:
+    pnus = ['1168010600109450010']
+    out_dir = '../../../../out'
+
 pnus_string = ','.join(["'%s'"%pnu for pnu in pnus])
 
 sql = '''
@@ -48,9 +56,16 @@ for f in features['features']:
         polygon = f['geometry']['coordinates']
         for pts in polygon:
             msp.add_lwpolyline(pts)
+            center = np.array(pts).mean(0)
+            # print(center)
+        name = f['properties']['jibun']
+        # print(name)
+        msp.add_text(name, {'height':5, 'insert': center})
+
 
 hashStr = getHashStr(str(pnus)+str(time.time()))
 filename = 'jj_%s.dxf'%hashStr
-out_path = '../out/'+filename
+# out_path = '../out/'+filename
+out_path = os.path.join(out_dir, filename)
 doc.saveas(out_path)
 print(filename)
