@@ -3,6 +3,11 @@ import json
 import os
 import ezdxf
 from db import con
+import hashlib
+import time
+
+def getHashStr(string):
+    return hashlib.sha256(string.encode()).hexdigest()
 
 params = json.loads(argv[1])
 # print(params['body'][0])
@@ -29,9 +34,23 @@ data = res.fetchall()
 # print(type(data[0]['jsonb_agg']))
 # features = data[0]['jsonb_agg']
 features = data[0]['jsonb_build_object']
-print(features)
+# print(features)
 
 doc = ezdxf.new()
 # print(os.getcwd()) 
 # => /root/share/np-api
 
+shapes = {'Polygon': lambda x: x}
+msp = doc.modelspace()
+for f in features['features']:
+    # print(f)
+    if f['geometry']['type'] in shapes:
+        polygon = f['geometry']['coordinates']
+        for pts in polygon:
+            msp.add_lwpolyline(pts)
+
+hashStr = getHashStr(str(pnus)+str(time.time()))
+filename = 'jj_%s.dxf'%hashStr
+out_path = '../out/'+filename
+doc.saveas(out_path)
+print(filename)
