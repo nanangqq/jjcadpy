@@ -27,9 +27,22 @@ select jsonb_build_object(
     'type', 'FeatureCollection',
     'features', jsonb_agg(ST_AsGeoJSON(t.*)::jsonb)
     )
-from ( select "A1", "A5", st_transform(geometry, 5186) from seoul_jijuk_0501_4326
-       where "A1" in (%s)
-     ) as t(pnu, jibun, geom);
+from ( 
+    select 
+        "A1",
+        "A3",
+        "A5",
+        st_transform(geometry, 5186),
+        st_transform(st_pointonsurface(geometry), 5186)
+    from seoul_jijuk_0501_4326
+    where "A1" in (%s)
+    ) as t(
+        pnu,
+        dong_name,
+        jibun,
+        geom,
+        center_point
+    );
 '''%pnus_string
 # res = con.execute('''
 # select jsonb_agg(st_asgeojson(st_transform(geometry, 5186))::jsonb) 
@@ -50,21 +63,39 @@ doc = ezdxf.new()
 
 shapes = {'Polygon': lambda x: x}
 msp = doc.modelspace()
+dong_names = {}
 for f in features['features']:
     # print(f)
     if f['geometry']['type'] in shapes:
+        # print(f['properties']['center_point'])
+        center_point = f['properties']['center_point']['coordinates']
+
+        pnu = f['properties']['pnu']
+        # print(pnu)
+        land_block = doc.blocks.new(name=pnu, base_point=center_point)
+
         polygon = f['geometry']['coordinates']
         for pts in polygon:
-            msp.add_lwpolyline(pts)
-            center = np.array(pts).mean(0)
-            # print(center)
+            # msp.add_lwpolyline(pts)
+            land_block.add_lwpolyline(pts)
+
+        # print(f['properties']['dong_name'])
+        dong_name = f['properties']['dong_name']
+        if dong_name in dong_names:
+            dong_names[dong_name].append(f['properties']['pnu'])
+        else:
+            dong_names[dong_name] = [f['properties']['pnu']]
+
         name = f['properties']['jibun']
         # print(name)
-        msp.add_text(name, {'height':5, 'insert': center})
+        # msp.add_text(name, {'height':5}).set_pos(center_point, align='MIDDLE_CENTER')
+        land_block.add_text(name, {'height':5}).set_pos(center_point, align='MIDDLE_CENTER')
+        msp.add_blockref(pnu, center_point)
 
 
 hashStr = getHashStr(str(pnus)+str(time.time()))
-filename = 'jj_%s.dxf'%hashStr
+most_number_dong = sorted(dong_names.keys(), key=lambda dong_name: len(dong_names[dong_name]))[0]
+filename = 'jj_%s_%s.dxf'%(most_number_dong.replace(' ', '_'), hashStr[:6])
 # out_path = '../out/'+filename
 out_path = os.path.join(out_dir, filename)
 doc.saveas(out_path)
